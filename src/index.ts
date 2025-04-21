@@ -329,6 +329,10 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
             type: "string",
             description: "New status (optional)",
           },
+          parentId: {
+            type: "string",
+            description: "Parent issue ID to set this as a subtask (optional)",
+          },
           assigneeId: {
             type: "string",
             description: "New assignee ID (optional)",
@@ -463,6 +467,7 @@ type UpdateIssueArgs = {
   title?: string;
   description?: string;
   status?: string;
+  parentId?: string;
   assigneeId?: string;
   priority?: number;
 };
@@ -640,13 +645,15 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           throw new Error(`Issue ${args.issueId} not found`);
         }
 
-        const updatedIssue = await issue.update({
-          title: args.title,
-          description: args.description,
-          stateId: args.status,
-          assigneeId: args.assigneeId,
-          priority: args.priority,
-        });
+        const updates: any = {};
+        if (args.title) updates.title = args.title;
+        if (args.description) updates.description = args.description;
+        if (args.status) updates.stateId = args.status;
+        if (args.parentId) updates.parentId = args.parentId;
+        if (args.assigneeId) updates.assigneeId = args.assigneeId;
+        if (args.priority !== undefined) updates.priority = args.priority;
+
+        const updatedIssue = await issue.update(updates);
 
         return {
           content: [
