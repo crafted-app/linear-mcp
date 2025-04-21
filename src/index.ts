@@ -33,13 +33,30 @@ try {
   if (process.env.ACCOUNTS) {
     accountsConfig = JSON.parse(process.env.ACCOUNTS);
   }
+  // If ACCOUNTS is not available, check if LINEAR_API_KEY is JSON
+  else {
+    const apiKeyValue = process.env.LINEAR_API_KEY || process.env.LINEARAPIKEY;
+    if (apiKeyValue) {
+      // Check if LINEAR_API_KEY is a JSON string
+      try {
+        const maybeJson = JSON.parse(apiKeyValue);
+        // If it's a JSON object with accounts property, use it as accountsConfig
+        if (maybeJson && typeof maybeJson === 'object' && Array.isArray(maybeJson.accounts)) {
+          accountsConfig = maybeJson;
+          console.log("Using LINEAR_API_KEY as multi-account configuration");
+        }
+      } catch (jsonError) {
+        // Not JSON, will use as simple API key
+      }
+    }
+  }
 } catch (error) {
   console.error("Error parsing ACCOUNTS environment variable:", error);
   console.error("Please check the JSON format of your ACCOUNTS environment variable.");
   process.exit(1);
 }
 
-// Fall back to LINEAR_API_KEY if ACCOUNTS is not provided
+// Fall back to LINEAR_API_KEY if ACCOUNTS is not provided and it's not a JSON object
 const API_KEY = process.env.LINEAR_API_KEY || process.env.LINEARAPIKEY;
 if (!accountsConfig && !API_KEY) {
   console.error("Error: Either ACCOUNTS or LINEAR_API_KEY environment variable is required");
