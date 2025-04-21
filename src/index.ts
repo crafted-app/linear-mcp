@@ -509,7 +509,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         }
 
         // If workspace is provided, find the account associated with that workspace
-        if (args.workspace) {
+        if (args?.workspace) {
           const result = findWorkspace(args.workspace);
           if (result) {
             accountsConfig.activeEmail = result.email;
@@ -539,7 +539,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         }
         
         // If email is provided, check if it's a valid account
-        if (args.email) {
+        if (args?.email) {
           const account = accountsConfig.accounts.find(a => a.email === args.email);
           if (account) {
             accountsConfig.activeEmail = account.email;
