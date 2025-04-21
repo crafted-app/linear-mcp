@@ -493,7 +493,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             content: [
               {
                 type: "text",
-                value: "No workspaces are configured. Please set up workspaces in your configuration.",
+                text: "No workspaces are configured. Please set up workspaces in your configuration.",
               },
             ],
           };
@@ -509,7 +509,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
               content: [
                 {
                   type: "text",
-                  value: JSON.stringify({
+                  text: JSON.stringify({
                     workspaces: workspacesConfig.workspaces.map((ws) => ({
                       id: ws.id,
                       name: ws.name,
@@ -529,7 +529,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
               content: [
                 {
                   type: "text",
-                  value: `Workspace '${args.workspace}' not found. Available workspaces: ${workspacesConfig.workspaces.map((ws) => ws.name).join(", ")}`
+                  text: `Workspace '${args.workspace}' not found. Available workspaces: ${workspacesConfig.workspaces.map((ws) => ws.name).join(", ")}`
                 },
               ],
             };
@@ -545,7 +545,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           content: [
             {
               type: "text",
-              value: JSON.stringify({
+              text: JSON.stringify({
                 workspaces: workspacesConfig.workspaces.map((ws) => ({
                   id: ws.id,
                   name: ws.name,
@@ -582,7 +582,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           content: [
             {
               type: "text",
-              value: JSON.stringify(issue, null, 2),
+              text: JSON.stringify(issue, null, 2),
             },
           ],
         };
@@ -621,7 +621,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           content: [
             {
               type: "text",
-              value: JSON.stringify(formattedIssues, null, 2),
+              text: JSON.stringify(formattedIssues, null, 2),
             },
           ],
         };
@@ -652,7 +652,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           content: [
             {
               type: "text",
-              value: JSON.stringify(updatedIssue, null, 2),
+              text: JSON.stringify(updatedIssue, null, 2),
             },
           ],
         };
@@ -676,7 +676,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           content: [
             {
               type: "text",
-              value: JSON.stringify(teams, null, 2),
+              text: JSON.stringify(teams, null, 2),
             },
           ],
         };
@@ -712,7 +712,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           content: [
             {
               type: "text",
-              value: JSON.stringify(projects, null, 2),
+              text: JSON.stringify(projects, null, 2),
             },
           ],
         };
@@ -750,7 +750,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           content: [
             {
               type: "text",
-              value: JSON.stringify(formattedResults, null, 2),
+              text: JSON.stringify(formattedResults, null, 2),
             },
           ],
         };
@@ -790,7 +790,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           content: [
             {
               type: "text",
-              value: JSON.stringify(allStates, null, 2)
+              text: JSON.stringify(allStates, null, 2)
             }
           ]
         };
@@ -988,7 +988,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             content: [
               {
                 type: "text",
-                value: JSON.stringify(issueDetails, null, 2),
+                text: JSON.stringify(issueDetails, null, 2),
               },
             ],
           };
@@ -1010,7 +1010,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       content: [
         {
           type: "text",
-          value: `Error: ${error.message}`,
+          text: `Error: ${error.message}`,
         },
       ],
     };
