@@ -483,7 +483,15 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           hasNextPage = states.pageInfo.hasNextPage;
           endCursor = states.pageInfo.endCursor ?? null;
         }
-        return { content: allStates };
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(allStates, null, 2)
+            }
+          ]
+        };
+
       }
       case "get_issue": {
         const args = request.params.arguments as unknown as GetIssueArgs;
