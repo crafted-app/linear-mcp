@@ -178,7 +178,7 @@ const server = new Server(
   {
     capabilities: {
       tools: {
-        select_account: true,
+        list_account: true,
         create_issue: true,
         list_issues: true,
         update_issue: true,
@@ -195,8 +195,8 @@ const server = new Server(
 server.setRequestHandler(ListToolsRequestSchema, async () => ({
   tools: [
     {
-      name: "select_account",
-      description: "Select an account to use for Linear operations",
+      name: "list_account",
+      description: "List available accounts/workspaces to use for Linear operations",
       inputSchema: {
         type: "object",
         properties: {
@@ -493,7 +493,7 @@ type GetIssueArgs = {
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   try {
     switch (request.params.name) {
-      case "select_account": {
+      case "list_account": {
         const args = request.params.arguments as { email?: string; workspace?: string };
         
         // If we don't have accounts config, we can't select an account
