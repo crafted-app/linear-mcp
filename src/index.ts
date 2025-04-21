@@ -19,126 +19,123 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import { LinearClient } from "@linear/sdk";
 
-// Parse ACCOUNTS environment variable or fall back to LINEAR_API_KEY
-let accountsConfig: {
-  accounts: Array<{
+let workspacesConfig: {
+  workspaces: Array<{
+    id: string;
+    name: string;
     email: string;
     apiKey: string;
-    workspaces?: Array<{ name: string; aliases: string; }>;
+    aliases?: string; // Comma-separated aliases
   }>;
-  activeEmail?: string;
+  activeWorkspaceId?: string;
 } | null = null;
 
 try {
-  if (process.env.ACCOUNTS) {
-    accountsConfig = JSON.parse(process.env.ACCOUNTS);
-  }
-  // If ACCOUNTS is not available, check if LINEAR_API_KEY is JSON
-  else {
-    const apiKeyValue = process.env.LINEAR_API_KEY || process.env.LINEARAPIKEY;
-    if (apiKeyValue) {
-      // Check if LINEAR_API_KEY is a JSON string
-      try {
-        // Attempt to decode the string in case it's URL encoded
-        const decodedValue = decodeURIComponent(apiKeyValue);
-        const maybeJson = JSON.parse(decodedValue);
-        // If it's a JSON object with accounts property, use it as accountsConfig
-        if (maybeJson && typeof maybeJson === 'object' && Array.isArray(maybeJson.accounts)) {
-          accountsConfig = maybeJson;
-          console.log("Using LINEAR_API_KEY as multi-account configuration");
-        }
-      } catch (jsonError) {
-        // Not JSON or not decodable, will use as simple API key
-        console.log("Could not parse LINEAR_API_KEY as JSON, using as simple API key");
+  const apiKeyValue = process.env.LINEAR_API_KEY || process.env.LINEARAPIKEY;
+  if (apiKeyValue) {
+    // Check if LINEAR_API_KEY is a JSON string
+    try {
+      // Attempt to decode the string in case it's URL encoded
+      const decodedValue = decodeURIComponent(apiKeyValue);
+      const maybeJson = JSON.parse(decodedValue);
+      // If it's a JSON object with workspaces property, use it as workspacesConfig
+      if (maybeJson && typeof maybeJson === 'object' && Array.isArray(maybeJson.workspaces)) {
+        workspacesConfig = maybeJson;
+        console.log("Using LINEAR_API_KEY as multi-workspace configuration");
       }
+    } catch (jsonError) {
+      // Not JSON or not decodable, will use as simple API key
+      console.log("Could not parse LINEAR_API_KEY as JSON, using as simple API key");
     }
   }
 } catch (error) {
-  console.error("Error parsing ACCOUNTS environment variable:", error);
-  console.error("Please check the JSON format of your ACCOUNTS environment variable.");
+  console.error("Error parsing LINEAR_API_KEY:", error);
+  console.error("Please check the JSON format of your LINEAR_API_KEY environment variable.");
   process.exit(1);
 }
 
-// Fall back to LINEAR_API_KEY if ACCOUNTS is not provided and it's not a JSON object
+// Fall back to simple API_KEY if no JSON config
 const API_KEY = process.env.LINEAR_API_KEY || process.env.LINEARAPIKEY;
-if (!accountsConfig && !API_KEY) {
-  console.error("Error: Either ACCOUNTS or LINEAR_API_KEY environment variable is required");
+if (!workspacesConfig && !API_KEY) {
+  console.error("Error: LINEAR_API_KEY environment variable is required");
   console.error("");
-  console.error("To use multiple accounts, set the ACCOUNTS environment variable with JSON format:");
-  console.error("ACCOUNTS='{");
-  console.error("  \"accounts\": [");
+  console.error("To use multiple workspaces, set the LINEAR_API_KEY environment variable with JSON format:");
+  console.error("LINEAR_API_KEY='{");
+  console.error("  \"workspaces\": [");
   console.error("    {");
+  console.error("      \"id\": \"work-project\",");
+  console.error("      \"name\": \"Work Project\",");
   console.error("      \"email\": \"work@example.com\",");
   console.error("      \"apiKey\": \"your_work_api_key_here\",");
-  console.error("      \"workspaces\": [");
-  console.error("        { \"name\": \"Work Project\", \"aliases\": \"work, main\" }");
-  console.error("      ]");
+  console.error("      \"aliases\": \"work, main\"");
   console.error("    },");
   console.error("    {");
+  console.error("      \"id\": \"personal-project\",");
+  console.error("      \"name\": \"Personal Project\",");
   console.error("      \"email\": \"personal@example.com\",");
   console.error("      \"apiKey\": \"your_personal_api_key_here\",");
-  console.error("      \"workspaces\": [");
-  console.error("        { \"name\": \"Personal Project\", \"aliases\": \"personal, side\" }");
-  console.error("      ]");
+  console.error("      \"aliases\": \"personal, side\"");
   console.error("    }");
   console.error("  ],");
-  console.error("  \"activeEmail\": \"work@example.com\"");
-  console.error("}'");
+  console.error("  \"activeWorkspaceId\": \"work-project\"");
+  console.error("}'\n");
   console.error("");
-  console.error("Or, to use a single account, set LINEAR_API_KEY:");
-  console.error("LINEAR_API_KEY=your-api-key npx @ibraheem4/linear-mcp");
+  console.error("Or, to use a single workspace, set LINEAR_API_KEY:");
+  console.error("LINEAR_API_KEY=your-api-key npx linear-mcp");
   console.error("");
   console.error("Or set it in your environment:");
   console.error("export LINEAR_API_KEY=your-api-key");
-  console.error("npx @ibraheem4/linear-mcp");
+  console.error("npx linear-mcp");
   process.exit(1);
 }
 
-// Create a map of LinearClient instances by email
+// Create a map of LinearClient instances by workspace ID
 const linearClients = new Map<string, LinearClient>();
 
-// Initialize clients for multi-account setup
-if (accountsConfig && accountsConfig.accounts && accountsConfig.accounts.length > 0) {
-  for (const account of accountsConfig.accounts) {
-    linearClients.set(account.email, new LinearClient({
-      apiKey: account.apiKey,
+// Initialize clients for multi-workspace setup
+if (workspacesConfig && workspacesConfig.workspaces && workspacesConfig.workspaces.length > 0) {
+  for (const workspace of workspacesConfig.workspaces) {
+    linearClients.set(workspace.id, new LinearClient({
+      apiKey: workspace.apiKey,
     }));
   }
 } else if (API_KEY) {
-  // Fall back to single account if ACCOUNTS is not available
-  const defaultEmail = "default@linear-mcp.local";
-  linearClients.set(defaultEmail, new LinearClient({
+  // Fall back to single workspace if no JSON config is available
+  const defaultWorkspaceId = "default";
+  linearClients.set(defaultWorkspaceId, new LinearClient({
     apiKey: API_KEY,
   }));
   
-  if (!accountsConfig) {
-    accountsConfig = {
-      accounts: [
+  if (!workspacesConfig) {
+    workspacesConfig = {
+      workspaces: [
         {
-          email: defaultEmail,
+          id: defaultWorkspaceId,
+          name: "Default Workspace",
+          email: "default@linear-mcp.local",
           apiKey: API_KEY
         }
       ],
-      activeEmail: defaultEmail
+      activeWorkspaceId: defaultWorkspaceId
     };
   }
 }
 
 // Function to get the active linear client
-const getLinearClient = (email?: string): LinearClient => {
-  // If email is provided, use that client
-  if (email && linearClients.has(email)) {
-    return linearClients.get(email)!;
+const getLinearClient = (workspaceId?: string): LinearClient => {
+  // If workspace ID is provided, use that client
+  if (workspaceId && linearClients.has(workspaceId)) {
+    return linearClients.get(workspaceId)!;
   }
   
-  // If no email provided, use the active email from config
-  if (accountsConfig?.activeEmail && linearClients.has(accountsConfig.activeEmail)) {
-    return linearClients.get(accountsConfig.activeEmail)!;
+  // If no workspace ID provided, use the active workspace ID from config
+  if (workspacesConfig?.activeWorkspaceId && linearClients.has(workspacesConfig.activeWorkspaceId)) {
+    return linearClients.get(workspacesConfig.activeWorkspaceId)!;
   }
   
-  // If no active email in config, use the first account
-  if (accountsConfig?.accounts && accountsConfig.accounts.length > 0 && accountsConfig.accounts[0].email) {
-    return linearClients.get(accountsConfig.accounts[0].email)!;
+  // If no active workspace ID in config, use the first workspace
+  if (workspacesConfig?.workspaces && workspacesConfig.workspaces.length > 0) {
+    return linearClients.get(workspacesConfig.workspaces[0].id)!;
   }
   
   throw new Error("No Linear client available. Please check your configuration.");
@@ -147,30 +144,34 @@ const getLinearClient = (email?: string): LinearClient => {
 // The default linearClient for backward compatibility
 const linearClient = getLinearClient();
 
-// Helper to find a workspace by name or alias
-const findWorkspace = (nameOrAlias: string): { email: string; workspace: { name: string; aliases: string } } | null => {
-  if (!accountsConfig || !accountsConfig.accounts) return null;
+// Helper to find a workspace by name, ID, or alias
+const findWorkspace = (nameOrIdOrAlias: string): { id: string; name: string; email: string; aliases?: string } | null => {
+  if (!workspacesConfig || !workspacesConfig.workspaces) return null;
   
-  const lowercaseSearch = nameOrAlias.toLowerCase();
+  const lowercaseSearch = nameOrIdOrAlias.toLowerCase();
   
-  for (const account of accountsConfig.accounts) {
-    if (!account.workspaces) continue;
-    
-    for (const workspace of account.workspaces) {
-      // Check if the name matches
-      if (workspace.name.toLowerCase() === lowercaseSearch) {
-        return { email: account.email, workspace };
-      }
-      
-      // Check if any alias matches
-      const aliases = workspace.aliases.split(',').map((a: string) => a.trim().toLowerCase());
-      if (aliases.includes(lowercaseSearch)) {
-        return { email: account.email, workspace };
-      }
-    }
+  // First try to find by exact ID match
+  const workspaceById = workspacesConfig.workspaces.find(ws => ws.id === nameOrIdOrAlias);
+  if (workspaceById) {
+    return workspaceById;
   }
   
-  return null;
+  // Then try to find by name (case insensitive)
+  const workspaceByName = workspacesConfig.workspaces.find(ws => 
+    ws.name.toLowerCase() === lowercaseSearch
+  );
+  if (workspaceByName) {
+    return workspaceByName;
+  }
+  
+  // Finally, try to find by alias
+  const workspaceByAlias = workspacesConfig.workspaces.find(ws => {
+    if (!ws.aliases) return false;
+    const aliases = ws.aliases.split(',').map(a => a.trim().toLowerCase());
+    return aliases.includes(lowercaseSearch);
+  });
+  
+  return workspaceByAlias || null;
 };
 
 const server = new Server(
@@ -181,7 +182,7 @@ const server = new Server(
   {
     capabilities: {
       tools: {
-        list_accounts: true,
+        list_workspaces: true,
         create_issue: true,
         list_issues: true,
         update_issue: true,
@@ -198,17 +199,40 @@ const server = new Server(
 server.setRequestHandler(ListToolsRequestSchema, async () => ({
   tools: [
     {
-      name: "list_accounts",
-      description: "List available accounts/workspaces to use for Linear operations",
+      name: "list_workspaces",
+      description: "List available workspaces to use for Linear operations",
       inputSchema: {
         type: "object",
         properties: {
           workspace: {
             type: "string",
-            description: "Workspace name or alias to select (if provided, finds the account associated with this workspace)",
+            description: "Workspace name, id, or alias to select",
           },
         },
-        required: [],
+      },
+      outputSchema: {
+        type: "object",
+        properties: {
+          workspaces: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                id: { type: "string" },
+                name: { type: "string" },
+                email: { type: "string" },
+              },
+            },
+          },
+          activeWorkspace: {
+            type: "object",
+            properties: {
+              id: { type: "string" },
+              name: { type: "string" },
+              email: { type: "string" },
+            },
+          },
+        },
       },
     },
     {
@@ -246,13 +270,9 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
             },
             description: "Label IDs to apply (optional)",
           },
-          email: {
+          workspaceId: {
             type: "string",
-            description: "Email of the Linear account to use (optional)",
-          },
-          workspace: {
-            type: "string",
-            description: "Workspace name or alias to use (optional)",
+            description: "Workspace ID to use (optional)",
           },
         },
         required: ["title", "teamId"],
@@ -280,13 +300,9 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
             type: "number",
             description: "Number of issues to return (default: 50)",
           },
-          email: {
+          workspaceId: {
             type: "string",
-            description: "Email of the Linear account to use (optional)",
-          },
-          workspace: {
-            type: "string",
-            description: "Workspace name or alias to use (optional)",
+            description: "Workspace ID to use (optional)",
           },
         },
       },
@@ -323,13 +339,9 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
             minimum: 0,
             maximum: 4,
           },
-          email: {
+          workspaceId: {
             type: "string",
-            description: "Email of the Linear account to use (optional)",
-          },
-          workspace: {
-            type: "string",
-            description: "Workspace name or alias to use (optional)",
+            description: "Workspace ID to use (optional)",
           },
         },
         required: ["issueId"],
@@ -345,13 +357,9 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
             type: "string",
             description: "The ID of the team to fetch statuses for."
           },
-          email: {
+          workspaceId: {
             type: "string",
-            description: "Email of the Linear account to use (optional)",
-          },
-          workspace: {
-            type: "string",
-            description: "Workspace name or alias to use (optional)",
+            description: "Workspace ID to use (optional)"
           }
         },
         required: ["teamId"]
@@ -363,13 +371,9 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       inputSchema: {
         type: "object",
         properties: {
-          email: {
+          workspaceId: {
             type: "string",
-            description: "Email of the Linear account to use (optional)",
-          },
-          workspace: {
-            type: "string",
-            description: "Workspace name or alias to use (optional)",
+            description: "Workspace ID to use (optional)",
           },
         },
       },
@@ -388,13 +392,9 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
             type: "number",
             description: "Number of projects to return (default: 50)",
           },
-          email: {
+          workspaceId: {
             type: "string",
-            description: "Email of the Linear account to use (optional)",
-          },
-          workspace: {
-            type: "string",
-            description: "Workspace name or alias to use (optional)",
+            description: "Workspace ID to use (optional)",
           },
         },
       },
@@ -413,13 +413,9 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
             type: "number",
             description: "Number of results to return (default: 50)",
           },
-          email: {
+          workspaceId: {
             type: "string",
-            description: "Email of the Linear account to use (optional)",
-          },
-          workspace: {
-            type: "string",
-            description: "Workspace name or alias to use (optional)",
+            description: "Workspace ID to use (optional)",
           },
         },
         required: ["query"],
@@ -435,13 +431,9 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
             type: "string",
             description: "Issue ID",
           },
-          email: {
+          workspaceId: {
             type: "string",
-            description: "Email of the Linear account to use (optional)",
-          },
-          workspace: {
-            type: "string",
-            description: "Workspace name or alias to use (optional)",
+            description: "Workspace ID to use (optional)",
           },
         },
         required: ["issueId"],
@@ -492,118 +484,92 @@ type GetIssueArgs = {
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   try {
     switch (request.params.name) {
-      case "list_accounts": {
-        const args = request.params.arguments as { email?: string; workspace?: string };
+      case "list_workspaces": {
+        const args = request.params.arguments as { workspace?: string };
         
-        // If we don't have accounts config, we can't select an account
-        if (!accountsConfig || !accountsConfig.accounts || accountsConfig.accounts.length === 0) {
+        // If we don't have workspaces config, we can't select a workspace
+        if (!workspacesConfig || !workspacesConfig.workspaces || workspacesConfig.workspaces.length === 0) {
           return {
             content: [
               {
                 type: "text",
-                text: "No accounts configured. Please set up the ACCOUNTS environment variable."
-              }
-            ]
+                value: "No workspaces are configured. Please set up workspaces in your configuration.",
+              },
+            ],
           };
         }
-
-        // If workspace is provided, find the account associated with that workspace
+        
+        // If workspace is provided, try to select it
         if (args?.workspace) {
-          const result = findWorkspace(args.workspace);
-          if (result) {
-            accountsConfig.activeEmail = result.email;
+          const workspace = findWorkspace(args.workspace);
+          if (workspace) {
+            workspacesConfig.activeWorkspaceId = workspace.id;
             
             return {
               content: [
                 {
-                  type: "json",
-                  json: {
-                    account: result.email,
-                    workspace: result.workspace.name,
-                    status: "selected"
-                  }
-                }
-              ]
+                  type: "text",
+                  value: JSON.stringify({
+                    workspaces: workspacesConfig.workspaces.map((ws) => ({
+                      id: ws.id,
+                      name: ws.name,
+                      email: ws.email,
+                    })),
+                    activeWorkspace: {
+                      id: workspace.id,
+                      name: workspace.name,
+                      email: workspace.email,
+                    },
+                  }),
+                },
+              ],
             };
           } else {
             return {
               content: [
                 {
                   type: "text",
-                  text: `No account found for workspace "${args.workspace}"`
-                }
-              ]
+                  value: `Workspace '${args.workspace}' not found. Available workspaces: ${workspacesConfig.workspaces.map((ws) => ws.name).join(", ")}`
+                },
+              ],
             };
           }
         }
         
-        // If email is provided, check if it's a valid account
-        if (args?.email) {
-          const account = accountsConfig.accounts.find(a => a.email === args.email);
-          if (account) {
-            accountsConfig.activeEmail = account.email;
-            
-            return {
-              content: [
-                {
-                  type: "json",
-                  json: {
-                    account: account.email,
-                    status: "selected",
-                    workspaces: account.workspaces?.map(ws => ws.name) || []
-                  }
-                }
-              ]
-            };
-          } else {
-            return {
-              content: [
-                {
-                  type: "text",
-                  text: `Account with email ${args.email} not found`
-                }
-              ]
-            };
-          }
-        }
+        // If no workspace provided, just list all workspaces
+        const activeWorkspace = workspacesConfig.workspaces.find(
+          (ws) => ws.id === workspacesConfig?.activeWorkspaceId
+        );
         
-        // If no parameters are provided, list all available accounts
         return {
           content: [
             {
               type: "text",
-              text: JSON.stringify(accountsConfig.accounts.map(account => ({
-                account: account.email,
-                workspaces: account.workspaces?.map(ws => ws.name) || [],
-                is_active: account.email === accountsConfig?.activeEmail,
-              })), null, 2)
+              value: JSON.stringify({
+                workspaces: workspacesConfig.workspaces.map((ws) => ({
+                  id: ws.id,
+                  name: ws.name,
+                  email: ws.email,
+                })),
+                activeWorkspace: activeWorkspace ? {
+                  id: activeWorkspace.id,
+                  name: activeWorkspace.name,
+                  email: activeWorkspace.email,
+                } : undefined,
+              }),
             },
-          ]
+          ],
         };
       }
       case "create_issue": {
-        const args = request.params.arguments as unknown as CreateIssueArgs & { email?: string; workspace?: string };
+        const args = request.params.arguments as CreateIssueArgs & { workspaceId?: string };
+        const linearClient = getLinearClient(args.workspaceId);
+        
         if (!args?.title || !args?.teamId) {
           throw new Error("Title and teamId are required");
         }
         
-        // Determine which account to use
-        let clientEmail = args.email;
-        
-        // If workspace is specified, find the account for that workspace
-        if (args.workspace && !clientEmail) {
-          const found = findWorkspace(args.workspace);
-          if (found) {
-            clientEmail = found.email;
-          } else {
-            throw new Error(`No account found for workspace "${args.workspace}"`);  
-          }
-        }
-        
-        // Get the client for the specified email or use default
-        const client = clientEmail ? getLinearClient(clientEmail) : linearClient;
-
-        const issue = await client.createIssue({
+        const issue = await linearClient.createIssue({
           title: args.title,
           description: args.description,
           teamId: args.teamId,
@@ -616,37 +582,22 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           content: [
             {
               type: "text",
-              text: JSON.stringify(issue, null, 2),
+              value: JSON.stringify(issue, null, 2),
             },
           ],
         };
       }
 
       case "list_issues": {
-        const args = request.params.arguments as unknown as ListIssuesArgs & { email?: string; workspace?: string };
+        const args = request.params.arguments as unknown as ListIssuesArgs & { workspaceId?: string };
+        const linearClient = getLinearClient(args.workspaceId);
 
         const filter: any = {};
         if (args?.teamId) filter.team = { id: { eq: args.teamId } };
         if (args?.assigneeId) filter.assignee = { id: { eq: args.assigneeId } };
         if (args?.status) filter.state = { name: { eq: args.status } };
-        
-        // Determine which account to use
-        let clientEmail = args.email;
-        
-        // If workspace is specified, find the account for that workspace
-        if (args.workspace && !clientEmail) {
-          const found = findWorkspace(args.workspace);
-          if (found) {
-            clientEmail = found.email;
-          } else {
-            throw new Error(`No account found for workspace "${args.workspace}"`);  
-          }
-        }
-        
-        // Get the client for the specified email or use default
-        const client = clientEmail ? getLinearClient(clientEmail) : linearClient;
 
-        const issues = await client.issues({
+        const issues = await linearClient.issues({
           first: args?.first ?? 50,
           filter,
         });
@@ -670,35 +621,21 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           content: [
             {
               type: "text",
-              text: JSON.stringify(formattedIssues, null, 2),
+              value: JSON.stringify(formattedIssues, null, 2),
             },
           ],
         };
       }
 
       case "update_issue": {
-        const args = request.params.arguments as unknown as UpdateIssueArgs & { email?: string; workspace?: string };
+        const args = request.params.arguments as unknown as UpdateIssueArgs & { workspaceId?: string };
+        const linearClient = getLinearClient(args.workspaceId);
+        
         if (!args?.issueId) {
           throw new Error("Issue ID is required");
         }
         
-        // Determine which account to use
-        let clientEmail = args.email;
-        
-        // If workspace is specified, find the account for that workspace
-        if (args.workspace && !clientEmail) {
-          const found = findWorkspace(args.workspace);
-          if (found) {
-            clientEmail = found.email;
-          } else {
-            throw new Error(`No account found for workspace "${args.workspace}"`);  
-          }
-        }
-        
-        // Get the client for the specified email or use default
-        const client = clientEmail ? getLinearClient(clientEmail) : linearClient;
-
-        const issue = await client.issue(args.issueId);
+        const issue = await linearClient.issue(args.issueId);
         if (!issue) {
           throw new Error(`Issue ${args.issueId} not found`);
         }
@@ -715,32 +652,17 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           content: [
             {
               type: "text",
-              text: JSON.stringify(updatedIssue, null, 2),
+              value: JSON.stringify(updatedIssue, null, 2),
             },
           ],
         };
       }
 
       case "list_teams": {
-        const args = request.params.arguments as { email?: string; workspace?: string };
+        const args = request.params.arguments as unknown as { workspaceId?: string };
+        const linearClient = getLinearClient(args.workspaceId);
         
-        // Determine which account to use
-        let clientEmail = args.email;
-        
-        // If workspace is specified, find the account for that workspace
-        if (args.workspace && !clientEmail) {
-          const found = findWorkspace(args.workspace);
-          if (found) {
-            clientEmail = found.email;
-          } else {
-            throw new Error(`No account found for workspace "${args.workspace}"`);  
-          }
-        }
-        
-        // Get the client for the specified email or use default
-        const client = clientEmail ? getLinearClient(clientEmail) : linearClient;
-        
-        const query = await client.teams();
+        const query = await linearClient.teams();
         const teams = await Promise.all(
           (query as any).nodes.map(async (team: any) => ({
             id: team.id,
@@ -754,34 +676,20 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           content: [
             {
               type: "text",
-              text: JSON.stringify(teams, null, 2),
+              value: JSON.stringify(teams, null, 2),
             },
           ],
         };
       }
 
       case "list_projects": {
-        const args = request.params.arguments as unknown as ListProjectsArgs & { email?: string; workspace?: string };
+        const args = request.params.arguments as unknown as ListProjectsArgs & { workspaceId?: string };
+        const linearClient = getLinearClient(args.workspaceId);
+        
         const filter: Record<string, any> = {};
         if (args?.teamId) filter.team = { id: { eq: args.teamId } };
-        
-        // Determine which account to use
-        let clientEmail = args.email;
-        
-        // If workspace is specified, find the account for that workspace
-        if (args.workspace && !clientEmail) {
-          const found = findWorkspace(args.workspace);
-          if (found) {
-            clientEmail = found.email;
-          } else {
-            throw new Error(`No account found for workspace "${args.workspace}"`);  
-          }
-        }
-        
-        // Get the client for the specified email or use default
-        const client = clientEmail ? getLinearClient(clientEmail) : linearClient;
 
-        const query = await client.projects({
+        const query = await linearClient.projects({
           first: args?.first ?? 50,
           filter,
         });
@@ -804,35 +712,21 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           content: [
             {
               type: "text",
-              text: JSON.stringify(projects, null, 2),
+              value: JSON.stringify(projects, null, 2),
             },
           ],
         };
       }
 
       case "search_issues": {
-        const args = request.params.arguments as unknown as SearchIssuesArgs & { email?: string; workspace?: string };
+        const args = request.params.arguments as unknown as SearchIssuesArgs & { workspaceId?: string };
         if (!args?.query) {
           throw new Error("Search query is required");
         }
         
-        // Determine which account to use
-        let clientEmail = args.email;
-        
-        // If workspace is specified, find the account for that workspace
-        if (args.workspace && !clientEmail) {
-          const found = findWorkspace(args.workspace);
-          if (found) {
-            clientEmail = found.email;
-          } else {
-            throw new Error(`No account found for workspace "${args.workspace}"`);  
-          }
-        }
-        
-        // Get the client for the specified email or use default
-        const client = clientEmail ? getLinearClient(clientEmail) : linearClient;
+        const linearClient = getLinearClient(args.workspaceId);
 
-        const searchResults = await client.searchIssues(args.query, {
+        const searchResults = await linearClient.searchIssues(args.query, {
           first: args?.first ?? 50,
         });
 
@@ -856,38 +750,26 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           content: [
             {
               type: "text",
-              text: JSON.stringify(formattedResults, null, 2),
+              value: JSON.stringify(formattedResults, null, 2),
             },
           ],
         };
       }
 
       case "get_issue_status": {
-        const args = request.params.arguments as { teamId: string; email?: string; workspace?: string };
+        const args = request.params.arguments as { teamId: string; workspaceId?: string };
+        const linearClient = getLinearClient(args.workspaceId);
+        
         if (!args.teamId) {
           throw new Error("teamId is required");
         }
         
-        // Determine which account to use
-        let clientEmail = args.email;
-        
-        // If workspace is specified, find the account for that workspace
-        if (args.workspace && !clientEmail) {
-          const found = findWorkspace(args.workspace);
-          if (found) {
-            clientEmail = found.email;
-          } else {
-            throw new Error(`No account found for workspace "${args.workspace}"`);  
-          }
-        }
-        
-        // Get the client for the specified email or use default
-        const client = clientEmail ? getLinearClient(clientEmail) : linearClient;
         const allStates: Array<{ id: string; name: string; description: string | null; position: number; type: string }> = [];
         let hasNextPage = true;
         let endCursor: string | null = null;
+        
         while (hasNextPage) {
-          const states = await client.workflowStates({
+          const states = await linearClient.workflowStates({
             filter: { team: { id: { eq: args.teamId } } },
             after: endCursor,
             first: 100,
@@ -908,35 +790,21 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           content: [
             {
               type: "text",
-              text: JSON.stringify(allStates, null, 2)
+              value: JSON.stringify(allStates, null, 2)
             }
           ]
         };
 
       }
       case "get_issue": {
-        const args = request.params.arguments as unknown as GetIssueArgs & { email?: string; workspace?: string };
+        const args = request.params.arguments as unknown as GetIssueArgs & { workspaceId?: string };
+        const linearClient = getLinearClient(args.workspaceId);
+        
         if (!args?.issueId) {
           throw new Error("Issue ID is required");
         }
         
-        // Determine which account to use
-        let clientEmail = args.email;
-        
-        // If workspace is specified, find the account for that workspace
-        if (args.workspace && !clientEmail) {
-          const found = findWorkspace(args.workspace);
-          if (found) {
-            clientEmail = found.email;
-          } else {
-            throw new Error(`No account found for workspace "${args.workspace}"`);  
-          }
-        }
-        
-        // Get the client for the specified email or use default
-        const client = clientEmail ? getLinearClient(clientEmail) : linearClient;
-
-        const issue = await client.issue(args.issueId);
+        const issue = await linearClient.issue(args.issueId);
         if (!issue) {
           throw new Error(`Issue ${args.issueId} not found`);
         }
@@ -1120,7 +988,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             content: [
               {
                 type: "text",
-                text: JSON.stringify(issueDetails, null, 2),
+                value: JSON.stringify(issueDetails, null, 2),
               },
             ],
           };
@@ -1133,7 +1001,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       default:
         throw new McpError(
           ErrorCode.MethodNotFound,
-          `Unknown tool: ${request.params.name}`
+          `Method ${request.params.name} not found`
         );
     }
   } catch (error: any) {
@@ -1142,10 +1010,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       content: [
         {
           type: "text",
-          text: `Linear API error: ${error.message}`,
+          value: `Error: ${error.message}`,
         },
       ],
-      isError: true,
     };
   }
 });
