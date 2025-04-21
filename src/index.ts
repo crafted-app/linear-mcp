@@ -159,6 +159,20 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       },
     },
     {
+      name: "get_issue_status",
+      description: "Get all workflow states (statuses) for a team, including id, name, description, position, and type.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          teamId: {
+            type: "string",
+            description: "The ID of the team to fetch statuses for."
+          }
+        },
+        required: ["teamId"]
+      }
+    },
+    {
       name: "list_teams",
       description: "List all teams in the workspace",
       inputSchema: {
@@ -442,6 +456,34 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         };
       }
 
+      case "get_issue_status": {
+        const { teamId } = request.params.arguments as { teamId: string };
+        if (!teamId) {
+          throw new Error("teamId is required");
+        }
+        const allStates: Array<{ id: string; name: string; description: string | null; position: number; type: string }> = [];
+        let hasNextPage = true;
+        let endCursor: string | null = null;
+        while (hasNextPage) {
+          const states = await linearClient.workflowStates({
+            filter: { team: { id: { eq: teamId } } },
+            after: endCursor,
+            first: 100,
+          });
+          allStates.push(
+            ...states.nodes.map((state: any) => ({
+              id: state.id,
+              name: state.name,
+              description: state.description,
+              position: state.position,
+              type: state.type,
+            }))
+          );
+          hasNextPage = states.pageInfo.hasNextPage;
+          endCursor = states.pageInfo.endCursor ?? null;
+        }
+        return { content: allStates };
+      }
       case "get_issue": {
         const args = request.params.arguments as unknown as GetIssueArgs;
         if (!args?.issueId) {
