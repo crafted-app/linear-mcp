@@ -572,16 +572,12 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           content: [
             {
               type: "text",
-              text: "Available accounts:"
-            },
-            {
-              type: "json",
-              json: accountsConfig.accounts.map(account => ({
+              text: JSON.stringify(accountsConfig.accounts.map(account => ({
                 account: account.email,
                 workspaces: account.workspaces?.map(ws => ws.name) || [],
                 is_active: account.email === accountsConfig?.activeEmail,
-              }))
-            }
+              })), null, 2)
+            },
           ]
         };
       }
