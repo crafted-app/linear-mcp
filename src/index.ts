@@ -39,7 +39,7 @@ const linearClient = new LinearClient({
 const server = new Server(
   {
     name: "linear-mcp",
-    version: "37.0.0", // Match Linear SDK version
+    version: "39.0.0", // Match Linear SDK version
   },
   {
     capabilities: {
@@ -51,6 +51,7 @@ const server = new Server(
         list_projects: true,
         search_issues: true,
         get_issue: true,
+        get_issue_status: true,
       },
     },
   }
