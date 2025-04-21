@@ -39,14 +39,17 @@ try {
     if (apiKeyValue) {
       // Check if LINEAR_API_KEY is a JSON string
       try {
-        const maybeJson = JSON.parse(apiKeyValue);
+        // Attempt to decode the string in case it's URL encoded
+        const decodedValue = decodeURIComponent(apiKeyValue);
+        const maybeJson = JSON.parse(decodedValue);
         // If it's a JSON object with accounts property, use it as accountsConfig
         if (maybeJson && typeof maybeJson === 'object' && Array.isArray(maybeJson.accounts)) {
           accountsConfig = maybeJson;
           console.log("Using LINEAR_API_KEY as multi-account configuration");
         }
       } catch (jsonError) {
-        // Not JSON, will use as simple API key
+        // Not JSON or not decodable, will use as simple API key
+        console.log("Could not parse LINEAR_API_KEY as JSON, using as simple API key");
       }
     }
   }
