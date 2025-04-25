@@ -270,6 +270,10 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
             },
             description: "Label IDs to apply (optional)",
           },
+          parentId: {
+            type: "string",
+            description: "Parent issue ID to set this as a subtask (optional)",
+          },
           workspaceId: {
             type: "string",
             description: "Workspace ID to use (optional)",
@@ -453,6 +457,7 @@ type CreateIssueArgs = {
   assigneeId?: string;
   priority?: number;
   labels?: string[];
+  parentId?: string;
 };
 
 type ListIssuesArgs = {
@@ -581,6 +586,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           assigneeId: args.assigneeId,
           priority: args.priority,
           labelIds: args.labels,
+          parentId: args.parentId,
         });
 
         return {
